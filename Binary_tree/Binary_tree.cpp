@@ -30,11 +30,11 @@ int SideIsCorrect(const int side) {
 
 
 /**
-*	Считает количество дочерних узлов уровня на 1 ниже у узла
+*	Считает количество сыновей
 *
 *	@param[in] node Узел
 *
-*	@return Количество дочерних узлов (0, 1, 2)
+*	@return Количество сыновей (0, 1, 2)
 */
 
 int NodeChildsCount(node_t* node) {
@@ -86,7 +86,7 @@ char* Value_tToStr(const value_t value) {
 }
 
 
-/*
+/*  Не для пользователя
 *	Рекурсивно записывает информацию обо всех узлах для программы Graphviz.\
  Информация, написанная этой функцией не является полноценным оформлением дерева.
 *
@@ -131,7 +131,7 @@ int NodesOutput(FILE* gvFile, node_t* node) {
 *	@return 0 - все прошло нормально
 */
 
-int ShowTree(tree_t* tree, const char foutName[] = "tree.png", const char gvFileName[]="tree.gv") {
+int ShowTree(tree_t* tree, const char foutName[], const char gvFileName[]) {
 	assert(tree != NULL);
 	assert(gvFileName != NULL);
 
@@ -157,7 +157,7 @@ int ShowTree(tree_t* tree, const char foutName[] = "tree.png", const char gvFile
 	return 0;
 }
 
-/**
+/*  Не для пользователя
 *	Выводит информацию о дереве. Для визуализации дерева, используйте ShowTree().
 *
 *	@param[in] tree Дерево
@@ -243,14 +243,15 @@ int ChangeNodeValue(node_t* node, value_t value) {
 *
 *	@param tree Дерево, в котором находится узел
 *	@param node Узел, к которому добавляем
-*	@param[in] elem Элемент нового узла
+*	@param[in] value Значение нового узла
 *	@param[in] side Сторона, с которой добавляем (LEFT_CHILD, RIGHT_CHILD)
+*	@param[out] newNode Адрес нового узла
 *
 *	@return 1 - у узла уже был дочерний узел с соответствующей стороны;\
  2 - параметр side имел некорректное значние; 0 - все прошло нормально
 */
 
-int AddChild(tree_t* tree, node_t* node, value_t elem, const int side) {
+int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t* newNode) {
 	assert(tree != NULL);
 	assert(node != NULL);
 
@@ -259,7 +260,7 @@ int AddChild(tree_t* tree, node_t* node, value_t elem, const int side) {
 	}
 
 	node_t* newNode = (node_t*)calloc(1, sizeof(node_t));
-	newNode->value = elem;
+	newNode->value = value;
 	newNode->left = NULL;
 	newNode->right = NULL;
 	newNode->parent = node;
@@ -418,7 +419,7 @@ int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side) {
 }
 
 
-/**
+/*  Не для пользователя
 *	Удаляет все дочерние узлы и сам узел
 *
 *	@param Узел

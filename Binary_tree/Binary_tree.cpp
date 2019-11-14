@@ -259,7 +259,7 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t* 
 		return 2;
 	}
 
-	node_t* newNode = (node_t*)calloc(1, sizeof(node_t));
+	newNode = (node_t*)calloc(1, sizeof(node_t));
 	newNode->value = value;
 	newNode->left = NULL;
 	newNode->right = NULL;
@@ -377,10 +377,10 @@ int DeleteChild(tree_t* tree, node_t* node, const int side) {
 
 
 /**
-*	Добавляет поддерево в дерево по указанному узлу
+*	Добавляет поддерево в дерево по указанному узлу.
 *
 *	@param tree Дерево, в которое добавляем
-*	@param subtree Поддерево, которое добавляем
+*	@param subtree Поддерево, которое добавляем. После присоединения деконструируется!
 *	@param node Узел, к которому добавляем
 *	@param[in] side Сторона узла, с которой добавляем
 *
@@ -414,6 +414,8 @@ int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side) {
 	}
 	subtree->root->parent = node;
 	tree->size += subtree->size;
+
+	TreeDestructor(subtree);
 
 	return 0;
 }

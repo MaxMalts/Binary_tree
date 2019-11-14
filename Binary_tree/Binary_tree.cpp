@@ -6,8 +6,8 @@
 
 
 #ifdef _DEBUG
-#define PrintTree_OK(stk) TreeDump(&tree, __FILE__, __LINE__, __FUNCTION__, "just looking");
-#define PrintTree_NOK(stk) TreeDump(&tree, __FILE__, __LINE__, __FUNCTION__, "tree has an error");
+#define PrintTree_OK(tree) TreeDump(&tree, __FILE__, __LINE__, __FUNCTION__, "just looking");
+#define PrintTree_NOK(tree) TreeDump(&tree, __FILE__, __LINE__, __FUNCTION__, "tree has an error");
 #else
 #define PrintTree_OK(tree) ;
 #define PrintTree_NOK(tree) ;
@@ -87,6 +87,117 @@ char* Value_tToStr(const value_t value) {
 
 
 /*  Не для пользователя
+*	Проверяет узлы ниже заданного и считает их количество
+*
+*	@param[in] node Узел
+*	@param[out] NNodes Количество узлов. На входе значение должно быть 0!
+*
+*	@return 1 - ошибка есть; 0 - ошибок нет
+*/
+
+#ifdef _DEBUG
+int NodesOk(node_t* node, int* NNodes) {
+	assert(node != NULL);
+	assert(NNodes != NULL);
+	
+	(*NNodes)++;
+	int err = 0;
+	if (node->left != NULL) {
+		if (node->left->parent != node) {
+			return 1;
+		}
+		err = NodesOk(node->left, NNodes);
+		if (err != 0) {
+			return err;
+		}
+	}
+	if (node->right != NULL) {
+		if (node->right->parent != node) {
+			return 1;
+		}
+		err = NodesOk(node->right, NNodes);
+		if (err != 0) {
+			return err;
+		}
+	}
+	
+	return 0;
+}
+#endif
+
+
+/**
+*	Проверяет дерево и записывает в него код ошибки
+*
+*	@param[in] tree Дерево
+*
+*	@return 0 - дерево некорректное; 1 - дерево корректное
+*/
+
+#ifdef _DEBUG
+int TreeOk(tree_t* tree) {
+	assert(tree != NULL);
+
+	if (tree->size < 0) {
+		tree->err = 1;
+		return 0;
+	}
+	int actSize = 0;
+	if (NodesOk(tree->root, &actSize) != 0) {
+		tree->err = 2;
+	}
+	if (actSize != tree->size) {
+		tree->err = 3;
+		return 0;
+	}
+
+	return 1;
+}
+#endif
+
+
+/*  Не для пользователя
+*	Выводит информацию о дереве. Для визуализации дерева, используйте ShowTree().
+*
+*	@param[in] tree Дерево
+*	@param[in] file Название файла, окуда вызвали функцию
+*	@param[in] line Номер строки, из которой вызвали функцию
+*	@param[in] function Имя функции, из которой вызвали функцию
+*	@param[in] reason Причина, по которой вызвали функцию
+*/
+
+#ifdef _DEBUG
+void TreeDump(tree_t* tree, const char* file, const int line, const char* function, const char* reason) {
+	assert(tree != NULL);
+	assert(file != NULL);
+	assert(line > 0);
+	assert(function != NULL);
+	assert(reason != NULL);
+
+	char status[10] = "ok";
+	if (tree->err != 0) {
+		strcpy(status, "ERR");
+	}
+
+	printf("\nInfo about a tree from file: %s, function: %s, line: %d, reason: %s:\n", file, function, line, reason);
+	printf("tree_t \"%s\" (%p):    (%s)\n", tree->name, tree, status);
+
+	printf("\tsize = %d\n", tree->size);
+
+	char* sValue = Value_tToStr(tree->root->value);
+	printf("\troot (%p):\n", tree->root);
+	printf("\t\tvalue: %s;\n", sValue);
+	printf("\t\tleft: %p;\n", tree->root->left);
+	printf("\t\tright: %p;\n", tree->root->right);
+	printf("\t\tparent: %p;\n", tree->root->parent);
+	free(sValue);
+
+	printf("err = %d\n\n\n", tree->err);
+}
+#endif
+
+
+/*  Не для пользователя
 *	Рекурсивно записывает информацию обо всех узлах для программы Graphviz.\
  Информация, написанная этой функцией не является полноценным оформлением дерева.
 *
@@ -128,12 +239,20 @@ int NodesOutput(FILE* gvFile, node_t* node) {
 *	@param[in] foutName Имя файла с картнкой (по умолчанию - "tree.png")
 *	@param[in] gvFileName Имя файла с описанием узлов для Graphviz (по умолчанию - "tree.gv")
 *
-*	@return 0 - все прошло нормально
+*	@return 1 - не удалось открыть файл для записи; 2 - на вход подалось дерево\
+с ошибкой (только в режиме отладки); 0 - все прошло нормально
 */
 
 int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]) {
 	assert(tree != NULL);
 	assert(gvFileName != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 2;
+	}
+#endif
 
 	FILE* gvFile = fopen(gvFileName, "w");
 	if (NULL == gvFile) {
@@ -167,11 +286,18 @@ int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]
 *	@param[in] tree Дерево
 *
 *	@return 1 - Проблема при создании изображения; 2 - проблема при открытии изображения;\
- 0 - все прошло нормально
+ 3 - на вход подалось дерево с ошибкой (только в режиме отладки); 0 - все прошло нормально
 */
 
 int ShowTree(tree_t* tree) {
 	assert(tree != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 3;
+	}
+#endif
 
 	if (1 == CreateTreeImage(tree)) {
 		return 1;
@@ -182,43 +308,6 @@ int ShowTree(tree_t* tree) {
 	return 0;
 }
 
-/*  Не для пользователя
-*	Выводит информацию о дереве. Для визуализации дерева, используйте ShowTree().
-*
-*	@param[in] tree Дерево
-*	@param[in] file Название файла, окуда вызвали функцию
-*	@param[in] line Номер строки, из которой вызвали функцию
-*	@param[in] function Имя функции, из которой вызвали функцию
-*	@param[in] reason Причина, по которой вызвали функцию
-*/
-
-void TreeDump(tree_t* tree, const char* file, const int line, const char* function, const char* reason) {
-	assert(tree != NULL);
-	assert(file != NULL);
-	assert(line > 0);
-	assert(function != NULL);
-	assert(reason != NULL);
-
-	char status[10] = "ok";
-	if (tree->err != 0) {
-		strcpy(status, "ERR");
-	}
-
-	printf("\nInfo about a tree from file: %s, function: %s, line: %d, reason: %s:\n", file, function, line, reason);
-	printf("tree_t \"%s\" (%p):    (%s)\n", tree->name, tree, status);
-
-	printf("\tsize = %d\n", tree->size);
-
-	char* sValue = Value_tToStr(tree->root->value);
-	printf("\troot (%p):\n", tree->root);
-	printf("\t\tvalue: %s;\n", sValue);
-	printf("\t\tleft: %p;\n", tree->root->left);
-	printf("\t\tright: %p;\n", tree->root->right);
-	printf("\t\tparent: %p;\n", tree->root->parent);
-	free(sValue);
-
-	printf("err = %d\n\n\n", tree->err);
-}
 
 /**
 *	Создает новое дерево. После вызова, измените значение корня\
@@ -241,6 +330,15 @@ tree_t TreeConstructor(const char* name) {
 	
 	tree.root = (node_t*)calloc(1, sizeof(node_t));
 	tree.size = 1;
+
+#ifdef _DEBUG
+	if (TreeOk(&tree)) {
+		PrintTree_OK(tree);
+	}
+	else {
+		PrintTree_NOK(tree);
+	}
+#endif
 
 	return tree;
 }
@@ -273,12 +371,20 @@ int ChangeNodeValue(node_t* node, value_t value) {
 *	@param[out] newNode Адрес нового узла
 *
 *	@return 1 - у узла уже был дочерний узел с соответствующей стороны;\
- 2 - параметр side имел некорректное значние; 0 - все прошло нормально
+ 2 - параметр side имел некорректное значние; 3 - на вход подалось дерево с\
+  ошибкой (только в режиме отладки); 0 - все прошло нормально
 */
 
 int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t** createdNode) {
 	assert(tree != NULL);
 	assert(node != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 3;
+	}
+#endif
 
 	if (!SideIsCorrect(side)) {
 		return 2;
@@ -308,6 +414,15 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t**
 	tree->size++;
 
 	*createdNode = newNode;
+
+#ifdef _DEBUG
+	if (TreeOk(tree)) {
+		PrintTree_OK(*tree);
+	}
+	else {
+		PrintTree_NOK(*tree);
+	}
+#endif
 
 	return 0;
 }
@@ -360,12 +475,20 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t**
 *	@param[in] side Сторона, с которой удаляем (LEFT_CHILD, RIGHT_CHILD)
 *
 *	@return 1 - не было дочернего узла; 2 - дочерний узел оказался поддеревом;\
- 3 - параметр side имел некорректное значние; 0 - все прошло нормально
+ 3 - параметр side имел некорректное значние; 4 - на вход подалось дерево с\
+ ошибкой (только в режиме отладки); 0 - все прошло нормально
 */
 
 int DeleteChild(tree_t* tree, node_t* node, const int side) {
 	assert(tree != NULL);
 	assert(node != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 4;
+	}
+#endif
 
 	if (!SideIsCorrect(side)) {
 		return 3;
@@ -399,6 +522,15 @@ int DeleteChild(tree_t* tree, node_t* node, const int side) {
 
 	tree->size--;
 
+#ifdef _DEBUG
+	if (TreeOk(tree)) {
+		PrintTree_OK(*tree);
+	}
+	else {
+		PrintTree_NOK(*tree);
+	}
+#endif
+
 	return 0;
 }
 
@@ -412,13 +544,28 @@ int DeleteChild(tree_t* tree, node_t* node, const int side) {
 *	@param[in] side Сторона узла, с которой добавляем
 *
 *	@return 1 - у узла уже был дочерний узел с соответствующей стороны;\
- 2 - параметр side имел некорректное значние; 0 - все прошло нормально
+ 2 - параметр side имел некорректное значние; 3, 4 - на вход подалось\
+ дерево или соответственно поддерево с ошибкой (только в режиме отладки);\
+ 0 - все прошло нормально
 */	
 
 int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side) {
 	assert(tree != NULL);
 	assert(subtree != NULL);
 	assert(node != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 3;
+	}
+#endif
+#ifdef _DEBUG
+	if (!TreeOk(subtree)) {
+		PrintTree_NOK(*subtree);
+		return 4;
+	}
+#endif
 
 	if (!SideIsCorrect(side)) {
 		return 2;
@@ -443,6 +590,15 @@ int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side) {
 	tree->size += subtree->size;
 
 	TreeDestructor(subtree);
+
+#ifdef _DEBUG
+	if (TreeOk(tree)) {
+		PrintTree_OK(*tree);
+	}
+	else {
+		PrintTree_NOK(*tree);
+	}
+#endif
 
 	return 0;
 }
@@ -482,12 +638,19 @@ int DeleteNodes(node_t* node, int count = 0) {
 *	@param side Сторона дочернего узла
 *
 *	@return 1 - не было дочернего узла; 2 - параметр side имел некорректное значние;\
- 0 - все прошло нормально
+ 3 - на вход подалось дерево с ошибкой (только в режиме отладки); 0 - все прошло нормально
 */
 
 int DeleteSubtree(tree_t* tree, node_t* node, const int side) {
 	assert(tree != NULL);
 	assert(node != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 3;
+	}
+#endif
 
 	if (!SideIsCorrect(side)) {
 		return 2;
@@ -517,6 +680,15 @@ int DeleteSubtree(tree_t* tree, node_t* node, const int side) {
 	tree->size -= deletedCount;
 	assert(tree->size >= 0);
 
+#ifdef _DEBUG
+	if (TreeOk(tree)) {
+		PrintTree_OK(*tree);
+	}
+	else {
+		PrintTree_NOK(*tree);
+	}
+#endif
+
 	return 0;
 }
 
@@ -533,6 +705,12 @@ int DeleteSubtree(tree_t* tree, node_t* node, const int side) {
 
 int DeleteTree(tree_t* tree) {
 	assert(tree != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+	}
+#endif
 
 	DeleteNodes(tree->root);
 	TreeDestructor(tree);

@@ -184,13 +184,13 @@ void TreeDump(tree_t* tree, const char* file, const int line, const char* functi
 
 	printf("\tsize = %d\n", tree->size);
 
-	char* sValue = Value_tToStr(tree->root->value);
+	char* valueS = Value_tToStr(tree->root->value);
 	printf("\troot (%p):\n", tree->root);
-	printf("\t\tvalue: %s;\n", sValue);
+	printf("\t\tvalue: %s;\n", valueS);
 	printf("\t\tleft: %p;\n", tree->root->left);
 	printf("\t\tright: %p;\n", tree->root->right);
 	printf("\t\tparent: %p;\n", tree->root->parent);
-	free(sValue);
+	free(valueS);
 
 	printf("err = %d\n\n\n", tree->err);
 }
@@ -211,13 +211,14 @@ int NodesOutput(FILE* gvFile, node_t* node) {
 	assert(gvFile != NULL);
 	assert(node != NULL);
 
-	char* sValue = Value_tToStr(node->value);
+	char* valueS = Value_tToStr(node->value);
 
 #ifdef _DEBUG
-	fprintf(gvFile, "\t%d [label=\"{%p|%p|%s|{%p|%p}}\"]\n", (int)node, node, node->parent, sValue, node->left, node->right);
+	fprintf(gvFile, "\t%d [label=\"{%p|%p|%s|{%p|%p}}\"]\n", (int)node, node, node->parent, valueS, node->left, node->right);
 #else
 	fprintf(gvFile, "\t%d [label=\"%s\"]", (int)node, sValue);
 #endif
+	free(valueS);
 
 	if (node->left != NULL) {
 		NodesOutput(gvFile, node->left);
@@ -733,6 +734,115 @@ int TreeDestructor(tree_t* tree) {
 
 	tree->root = NULL;
 	tree->size = 0;
+
+	return 0;
+}
+
+
+/*   Не для пользователя
+*	Строка с курсором
+*/
+
+struct buf_t {
+	char* str = {};
+	int cursor = 0;
+};
+
+
+/*  Не для пользователя
+*	Пишет строку в конец буфера
+*
+*	@param buf 
+*	@param[in] str 
+*
+*	@return 1 - проблема при дописывании; 0 - все прошло нормально
+*/
+
+int Bufcat(buf_t* buf, const char* str) {
+	assert(buf != NULL);
+	assert(str != NULL);
+
+	int ret = sprintf(&buf->str[buf->cursor], "%s", str);
+	buf->cursor += strlen(str);
+	buf->str[buf->cursor] = '\0';
+
+	if (ret == 0) {
+		return 1;
+	}
+	return 0;
+}
+
+
+/*  Не для пользователя
+*	Создает код по узлу
+*
+*	@param[in] node Узел
+*	@param[out] buf Буфер
+*
+*	@return 0 - все прошло нормально
+*/
+
+int CodeFromNode(node_t* node, buf_t* buf) {
+	assert(node != NULL);
+	assert(buf != NULL);
+
+	char* valueS = Value_tToStr(node->value);
+	
+	if (NodeChildsCount(node) > 0) {
+		Bufcat(buf, valueS);
+		Bufcat(buf, "{");
+		if (node->left != NULL) {
+			CodeFromNode(node->left, buf);
+		}
+		else {
+			Bufcat(buf, "@");
+		}
+		Bufcat(buf, ",");
+		if (node->right != NULL) {
+			CodeFromNode(node->right, buf);
+		}
+		else {
+			Bufcat(buf, "@");
+		}
+		Bufcat(buf, "}");
+	}
+	else {
+		Bufcat(buf, "{");
+		Bufcat(buf, valueS);
+		Bufcat(buf, "}");
+	}
+
+	return 0;
+}
+
+
+/**
+*	Создает код по дереву
+*
+*	@param[in] tree Дерево
+*	@param[out] str Буфер
+*
+*	@return 1 - на вход подалось дерево с ошибкой (только в режиме отладки);\
+ 0 - все прошло нормально
+*/
+
+int CodeFromTree(tree_t* tree, char* str) {
+	assert(tree != NULL);
+	assert(str != NULL);
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		return 1;
+	}
+#endif
+
+	buf_t buf = {};
+	buf.str = str;
+	
+	Bufcat(&buf, "{");
+	CodeFromNode(tree->root, &buf);
+	Bufcat(&buf, "}");
 
 	return 0;
 }

@@ -35,6 +35,8 @@ int NodeChildsCount(node_t* node);
 
 int CopyValue_t(value_t* dest, value_t* source);
 
+char* Value_tToStr(const value_t value);
+
 
 tree_t TreeConstructor(const char* name);
 
@@ -56,3 +58,6 @@ int TreeDestructor(tree_t* tree);
 int CreateTreeImage(tree_t* tree, const char foutName[] = "tree.png", const char gvFileName[] = "tree.gv");
 
 int ShowTree(tree_t* tree);
+
+
+int CodeFromTree(tree_t* tree, char* str);

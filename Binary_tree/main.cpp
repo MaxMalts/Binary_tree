@@ -28,6 +28,10 @@ int main() {
 	AddSubtree(&tree1, &tree2, tree1.root, RIGHT_CHILD);
 	ShowTree(&tree1);
 
+	char code[100] = "";
+	CodeFromTree(&tree1, code);
+	printf("%s", code);
+	getchar();
 
 	DeleteChild(&tree1, nodes[0], RIGHT_CHILD);
 	ShowTree(&tree1);

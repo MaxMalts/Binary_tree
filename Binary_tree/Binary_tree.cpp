@@ -160,6 +160,28 @@ int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]
 	return 0;
 }
 
+
+/**
+*	Создает изображение дерева и открывает его
+*
+*	@param[in] tree Дерево
+*
+*	@return 1 - Проблема при создании изображения; 2 - проблема при открытии изображения;\
+ 0 - все прошло нормально
+*/
+
+int ShowTree(tree_t* tree) {
+	assert(tree != NULL);
+
+	if (1 == CreateTreeImage(tree)) {
+		return 1;
+	}
+	if (1 != system("tree.png")) {
+		return 2;
+	}
+	return 0;
+}
+
 /*  Не для пользователя
 *	Выводит информацию о дереве. Для визуализации дерева, используйте ShowTree().
 *

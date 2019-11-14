@@ -48,3 +48,5 @@ int TreeDestructor(tree_t* tree);
 
 
 int CreateTreeImage(tree_t* tree, const char foutName[] = "tree.png", const char gvFileName[] = "tree.gv");
+
+int ShowTree(tree_t* tree);

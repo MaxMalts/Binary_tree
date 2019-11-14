@@ -3,14 +3,6 @@
 #include <assert.h>
 #include "btree.h"
 
-void ShowTree(tree_t* tree) {
-	assert(tree != NULL);
-
-	CreateTreeImage(tree);
-	system("tree.png");
-	getchar();
-}
-
 int main() {
 	tree_t tree1 = TreeConstructor("tree1");
 
@@ -43,7 +35,6 @@ int main() {
 
 	DeleteSubtree(&tree1, tree1.root, LEFT_CHILD);
 	ShowTree(&tree1);
-
 
 	DeleteTree(&tree1);
 	

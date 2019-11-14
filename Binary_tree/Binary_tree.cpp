@@ -2,36 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "btree.h"
 
-#define LEFT_CHILD 1
-#define RIGHT_CHILD 2
-
-typedef int value_t;
-
-struct node_t {
-	value_t value = {};
-	node_t* left = NULL;
-	node_t* right = NULL;
-	node_t* parent = NULL;
-};
-
-struct tree_t {
-
-	node_t* root = {};                       ///<Корень
-	int size = 0;                            ///<Настоящий размер дерева
 
 #ifdef _DEBUG
-	char name[30] = "";                      ///<Имя дерева
-	int err = 0;                             ///<Код ошибки, содержащейся в дереве:\n
-											 ///0 - нет ошибок\n
+#define PrintTree_OK(stk) TreeDump(&tree, __FILE__, __LINE__, __FUNCTION__, "just looking");
+#define PrintTree_NOK(stk) TreeDump(&tree, __FILE__, __LINE__, __FUNCTION__, "tree has an error");
+#else
+#define PrintTree_OK(tree) ;
+#define PrintTree_NOK(tree) ;
 #endif
-};
-
-
-
-
-int TreeDestructor(tree_t* tree);
-
 
 /**
 *	Проверяет, соответствует ли аргумент одной из сторон узла
@@ -86,6 +66,133 @@ int CopyValue_t(value_t* dest, value_t* source) {
 	*dest = *source;
 
 	return 0;
+}
+
+
+/**
+*	Преобразует value_t в строку
+*
+*	@param[in] value Элемент типа value_t
+*
+*	@return Указатель на строку. Не забудьте освободить память по этому указателю!
+*/
+
+char* Value_tToStr(const value_t value) {
+	const int value_tMaxStrSize = 20;
+
+	char* str = (char*)calloc(value_tMaxStrSize + 1, sizeof(char));
+	itoa(value, str, 10);
+	return str;
+}
+
+
+/*
+*	Рекурсивно записывает информацию обо всех узлах для программы Graphviz.\
+ Информация, написанная этой функцией не является полноценным оформлением дерева.
+*
+*	@param[in] gvFile Файл для записи
+*	@param[in] node Корневой узел
+*
+*	@return 0 - все прошло нормально
+*/
+
+int NodesOutput(FILE* gvFile, node_t* node) {
+	assert(gvFile != NULL);
+	assert(node != NULL);
+
+	char* sValue = Value_tToStr(node->value);
+
+#ifdef _DEBUG
+	fprintf(gvFile, "\t%d [label=\"{%p|%s|{%p|%p}}\"]\n", (int)node, node->parent, sValue, node->left, node->right);
+#else
+	fprintf(gvFile, "\t%d [label=\"%s\"]", (int)node, sValue);
+#endif
+
+	if (node->left != NULL) {
+		NodesOutput(gvFile, node->left);
+		fprintf(gvFile, "\t%d -> %d", (int)node, (int)node->left);
+	}
+	if (node->right != NULL) {
+		NodesOutput(gvFile, node->right);
+		fprintf(gvFile, "\t%d -> %d", (int)node, (int)node->right);
+	}
+
+	return 0;
+}
+
+
+/**
+*	Рисует дерево с помощью программы Graphviz.
+*
+*	@param[in] tree Дерево
+*	@param[in] foutName Имя файла с картнкой (по умолчанию - "tree.png")
+*	@param[in] gvFileName Имя файла с описанием узлов для Graphviz (по умолчанию - "tree.gv")
+*
+*	@return 0 - все прошло нормально
+*/
+
+int ShowTree(tree_t* tree, const char foutName[] = "tree.png", const char gvFileName[]="tree.gv") {
+	assert(tree != NULL);
+	assert(gvFileName != NULL);
+
+	FILE* gvFile = fopen(gvFileName, "w");
+	if (NULL == gvFile) {
+		return 1;
+	}
+	
+#ifdef _DEBUG
+	fprintf(gvFile, "digraph %s {\n", tree->name);
+	fprintf(gvFile, "\tnode [shape=record];\n\n");
+	fprintf(gvFile, "\tformat_node [label=\"{parent|value|{left|right}}\"]\n");
+#else
+	fprintf(ftemp, "digraph {\n", tree->name);
+#endif
+
+	NodesOutput(gvFile, tree->root);
+
+	char sysCommand[1000] = "";
+	sprintf(sysCommand, "dot -Tpng %s -o %s", gvFileName, foutName);
+	system(sysCommand);
+
+	return 0;
+}
+
+/**
+*	Выводит информацию о дереве. Для визуализации дерева, используйте ShowTree().
+*
+*	@param[in] tree Дерево
+*	@param[in] file Название файла, окуда вызвали функцию
+*	@param[in] line Номер строки, из которой вызвали функцию
+*	@param[in] function Имя функции, из которой вызвали функцию
+*	@param[in] reason Причина, по которой вызвали функцию
+*/
+
+void TreeDump(tree_t* tree, const char* file, const int line, const char* function, const char* reason) {
+	assert(tree != NULL);
+	assert(file != NULL);
+	assert(line > 0);
+	assert(function != NULL);
+	assert(reason != NULL);
+
+	char status[10] = "ok";
+	if (tree->err != 0) {
+		strcpy(status, "ERR");
+	}
+
+	printf("\nInfo about a tree from file: %s, function: %s, line: %d, reason: %s:\n", file, function, line, reason);
+	printf("tree_t \"%s\" (%p):    (%s)\n", tree->name, tree, status);
+
+	printf("\tsize = %d\n", tree->size);
+
+	char* sValue = Value_tToStr(tree->root->value);
+	printf("\troot (%p):\n", tree->root);
+	printf("\t\tvalue: %s;\n", sValue);
+	printf("\t\tleft: %p;\n", tree->root->left);
+	printf("\t\tright: %p;\n", tree->root->right);
+	printf("\t\tparent: %p;\n", tree->root->parent);
+	free(sValue);
+
+	printf("err = %d\n\n\n", tree->err);
 }
 
 /**
@@ -147,7 +254,7 @@ int AddChild(tree_t* tree, node_t* node, value_t elem, const int side) {
 	assert(tree != NULL);
 	assert(node != NULL);
 
-	if (!SideIsCorrect) {
+	if (!SideIsCorrect(side)) {
 		return 2;
 	}
 

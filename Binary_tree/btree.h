@@ -34,7 +34,7 @@ tree_t TreeConstructor(const char* name);
 
 int ChangeNodeValue(node_t* node, value_t value);
 
-int AddChild(tree_t* tree, node_t* node, value_t elem, const int side, node_t* newNode = NULL);
+int AddChild(tree_t* tree, node_t* node, value_t elem, const int side, node_t** createdNode = NULL);
 
 int DeleteChild(tree_t* tree, node_t* node, const int side);
 
@@ -47,4 +47,4 @@ int DeleteTree(tree_t* tree);
 int TreeDestructor(tree_t* tree);
 
 
-int ShowTree(tree_t* tree, const char foutName[] = "tree.png", const char gvFileName[] = "tree.gv");
+int CreateTreeImage(tree_t* tree, const char foutName[] = "tree.png", const char gvFileName[] = "tree.gv");

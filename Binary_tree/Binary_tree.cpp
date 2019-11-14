@@ -103,18 +103,18 @@ int NodesOutput(FILE* gvFile, node_t* node) {
 	char* sValue = Value_tToStr(node->value);
 
 #ifdef _DEBUG
-	fprintf(gvFile, "\t%d [label=\"{%p|%s|{%p|%p}}\"]\n", (int)node, node->parent, sValue, node->left, node->right);
+	fprintf(gvFile, "\t%d [label=\"{%p|%p|%s|{%p|%p}}\"]\n", (int)node, node, node->parent, sValue, node->left, node->right);
 #else
 	fprintf(gvFile, "\t%d [label=\"%s\"]", (int)node, sValue);
 #endif
 
 	if (node->left != NULL) {
 		NodesOutput(gvFile, node->left);
-		fprintf(gvFile, "\t%d -> %d", (int)node, (int)node->left);
+		fprintf(gvFile, "\t%d -> %d\n", (int)node, (int)node->left);
 	}
 	if (node->right != NULL) {
 		NodesOutput(gvFile, node->right);
-		fprintf(gvFile, "\t%d -> %d", (int)node, (int)node->right);
+		fprintf(gvFile, "\t%d -> %d\n", (int)node, (int)node->right);
 	}
 
 	return 0;
@@ -131,7 +131,7 @@ int NodesOutput(FILE* gvFile, node_t* node) {
 *	@return 0 - все прошло нормально
 */
 
-int ShowTree(tree_t* tree, const char foutName[], const char gvFileName[]) {
+int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]) {
 	assert(tree != NULL);
 	assert(gvFileName != NULL);
 
@@ -143,12 +143,15 @@ int ShowTree(tree_t* tree, const char foutName[], const char gvFileName[]) {
 #ifdef _DEBUG
 	fprintf(gvFile, "digraph %s {\n", tree->name);
 	fprintf(gvFile, "\tnode [shape=record];\n\n");
-	fprintf(gvFile, "\tformat_node [label=\"{parent|value|{left|right}}\"]\n");
+	fprintf(gvFile, "\tformat_node [label=\"{adress|parent|value|{left|right}}\"]\n\n");
 #else
 	fprintf(ftemp, "digraph {\n", tree->name);
 #endif
 
 	NodesOutput(gvFile, tree->root);
+
+	fprintf(gvFile, "}");
+	fclose(gvFile);
 
 	char sysCommand[1000] = "";
 	sprintf(sysCommand, "dot -Tpng %s -o %s", gvFileName, foutName);
@@ -251,7 +254,7 @@ int ChangeNodeValue(node_t* node, value_t value) {
  2 - параметр side имел некорректное значние; 0 - все прошло нормально
 */
 
-int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t* newNode) {
+int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t** createdNode) {
 	assert(tree != NULL);
 	assert(node != NULL);
 
@@ -259,7 +262,7 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t* 
 		return 2;
 	}
 
-	newNode = (node_t*)calloc(1, sizeof(node_t));
+	node_t* newNode = (node_t*)calloc(1, sizeof(node_t));
 	newNode->value = value;
 	newNode->left = NULL;
 	newNode->right = NULL;
@@ -281,6 +284,8 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t* 
 	}
 
 	tree->size++;
+
+	*createdNode = newNode;
 
 	return 0;
 }

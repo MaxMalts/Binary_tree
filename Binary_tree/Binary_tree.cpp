@@ -162,18 +162,23 @@ int NodesOk(node_t* node, int* NNodes) {
 
 #ifdef _DEBUG
 int TreeOk(tree_t* tree) {
-	assert(tree != NULL);
-
+	if (tree == NULL) {
+		return 0;
+	}
 	if (tree->size < 0) {
 		tree->err = 1;
 		return 0;
 	}
+	if (tree->root == NULL) {
+		tree->err = 2;
+		return 0;
+	}
 	int actSize = 0;
 	if (NodesOk(tree->root, &actSize) != 0) {
-		tree->err = 2;
+		tree->err = 3;
 	}
 	if (actSize != tree->size) {
-		tree->err = 3;
+		tree->err = 4;
 		return 0;
 	}
 
@@ -1007,6 +1012,13 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 
 		if (buf->str[buf->cursor] == '@') {
 			node->left = NULL;
+			buf->cursor++;
+
+			int err = 0;
+			err = CodeToNodes(buf, node, size);
+			if (err != 0) {
+				return err;
+			}
 		}
 		else {
 			char valueS[100] = "";
@@ -1041,6 +1053,13 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 
 		if (buf->str[buf->cursor] == '@') {
 			node->right = NULL;
+			buf->cursor++;
+
+			int err = 0;
+			err = CodeToNodes(buf, node, size);
+			if (err != 0) {
+				return err;
+			}
 		}
 		else {
 			char valueS[100] = "";
@@ -1119,7 +1138,9 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 	}
 
 #ifdef _DEBUG
-	assert(TreeOk(&tree));
+	if (!TreeOk(&tree)) {
+		*err = 1;
+	}
 #endif
 
 	return tree;

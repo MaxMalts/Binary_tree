@@ -60,4 +60,6 @@ int CreateTreeImage(tree_t* tree, const char foutName[] = "tree.png", const char
 int ShowTree(tree_t* tree);
 
 
-int CodeFromTree(tree_t* tree, char* str);
+int TreeToCode(tree_t* tree, char* str);
+
+tree_t CodeToTree(char* code, const char* treeName="tree_from_code", int* err = NULL);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #include "btree.h"
 
 
@@ -78,11 +79,36 @@ int CopyValue_t(value_t* dest, value_t* source) {
 */
 
 char* Value_tToStr(const value_t value) {
+
 	const int value_tMaxStrSize = 20;
 
 	char* str = (char*)calloc(value_tMaxStrSize + 1, sizeof(char));
 	itoa(value, str, 10);
+
 	return str;
+}
+
+
+/**
+*	Преобразует строку в value_t
+*
+*	@param[in] valueS Строка
+*	@param[out] value Значение value_t
+*
+*	@return 1 - в строке неверное представление value_t; 0 - все прошло нормально
+*/
+
+int StrToValue_t(const char* valueS, value_t* value) {
+	assert(valueS != NULL);
+	assert(value != NULL);
+
+	if (!isdigit(valueS[0]) && valueS[0] != '-') {
+		return 1;
+	}
+	
+	*value = atoi(valueS);
+
+	return 0;
 }
 
 
@@ -262,7 +288,7 @@ int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]
 	
 #ifdef _DEBUG
 	fprintf(gvFile, "digraph %s {\n", tree->name);
-	fprintf(gvFile, "\tnode [shape=record];\n\n");
+	fprintf(gvFile, "\tnode [shape=record]\n\n");
 	fprintf(gvFile, "\tformat_node [label=\"{adress|parent|value|{left|right}}\"]\n\n");
 #else
 	fprintf(ftemp, "digraph {\n", tree->name);
@@ -282,7 +308,7 @@ int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]
 
 
 /**
-*	Создает изображение дерева и открывает его
+*	Создает изображение дерева и открывает его. Функция медленная, не используйте часто!
 *
 *	@param[in] tree Дерево
 *
@@ -300,10 +326,20 @@ int ShowTree(tree_t* tree) {
 	}
 #endif
 
-	if (1 == CreateTreeImage(tree)) {
+	//Чтобы не использовать Sleep() из windows.h.
+	//Если этого не сделать, то предыдущее изображение открывается как новое.
+	int a = 0;
+	for (int i = 0; i < 1000000; i++) {
+		a++;
+		if (a % 100 == 0) {
+			i -= 99;
+		}
+	}
+
+	if (CreateTreeImage(tree) == 1) {
 		return 1;
 	}
-	if (1 != system("tree.png")) {
+	if (system("tree.png") != 0) {
 		return 2;
 	}
 	return 0;
@@ -362,6 +398,24 @@ int ChangeNodeValue(node_t* node, value_t value) {
 	return 0;
 }
 
+
+/*  Не для пользователя
+*	Создает новый узел
+*
+*	@return Указатель на новый узел. Не забудьте освободить память по этому указателю!
+*/
+
+node_t* CreateNode() {
+
+	node_t* node = (node_t*)calloc(1, sizeof(node_t));
+	node->value = {};
+	node->left = NULL;
+	node->right = NULL;
+	node->parent = NULL;
+
+	return node;
+}
+
 /**
 *	Добавляет узел с указанной стороны по значению
 *
@@ -391,10 +445,8 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t**
 		return 2;
 	}
 
-	node_t* newNode = (node_t*)calloc(1, sizeof(node_t));
+	node_t* newNode = CreateNode();
 	newNode->value = value;
-	newNode->left = NULL;
-	newNode->right = NULL;
 	newNode->parent = node;
 
 	switch (side) {
@@ -746,6 +798,7 @@ int TreeDestructor(tree_t* tree) {
 struct buf_t {
 	char* str = {};
 	int cursor = 0;
+	int size = 0;
 };
 
 
@@ -763,7 +816,10 @@ int Bufcat(buf_t* buf, const char* str) {
 	assert(str != NULL);
 
 	int ret = sprintf(&buf->str[buf->cursor], "%s", str);
-	buf->cursor += strlen(str);
+
+	int SLen = strlen(str);
+	buf->cursor += SLen;
+	buf->size += SLen;
 	buf->str[buf->cursor] = '\0';
 
 	if (ret == 0) {
@@ -773,43 +829,122 @@ int Bufcat(buf_t* buf, const char* str) {
 }
 
 
+/**
+*	Прверяет, является ли символ одним из данных
+*
+*	@param[in] ch Проверяемый символ
+*	@param[in] chars Массив символов
+*
+*	@return 0 (false) - не является; 1 (true) - является
+*/
+
+int IsOneOfChars(const char ch, const char* chars) {
+	assert(chars != NULL);
+
+	for (int i = 0; i < strlen(chars); i++) {
+		if (ch == chars[i]) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+*	Считает размер буфера и записывает его
+*
+*	@param buf Буфер
+*
+*	@return Размер
+*/
+
+int CalcBufSize(buf_t* buf) {
+	assert(buf != NULL);
+
+	int res = strlen(buf->str);
+	buf->size = res;
+
+	return res;
+}
+
+
+/*
+*	Читает из буфера до одного из заданного символов
+*
+*	@param[out] str Строка, в которую прочитается
+*	@param[in] buf Буфер
+*	@param[in] chars Массив конечных символов
+*
+*	@return 1 - символ не найден, курсор остается на том же месте;\
+ 0 - все прошло нормально
+*/
+
+int ReadToChar(char* str, buf_t* buf, const char* chars) {
+	assert(str != NULL);
+	assert(buf != NULL);
+	assert(chars != NULL);
+
+	int NChars = strlen(chars);
+
+	int cursorRecover = buf->cursor;
+	
+	int strCursor = 0;
+
+	char curCh = buf->str[buf->cursor];
+
+	while (!IsOneOfChars(curCh, chars)) {
+
+		if (buf->cursor > buf->size) {
+			buf->cursor = cursorRecover;
+			return 1;
+		}
+
+		str[strCursor] = curCh;
+		buf->cursor++;
+		strCursor++;
+
+		curCh = buf->str[buf->cursor];
+	}
+
+	return 0;
+}
+
 /*  Не для пользователя
 *	Создает код по узлу
 *
 *	@param[in] node Узел
-*	@param[out] buf Буфер
+*	@param[out] codeBuf Буфер с кодом
 *
 *	@return 0 - все прошло нормально
 */
 
-int CodeFromNode(node_t* node, buf_t* buf) {
+int NodesToCode(node_t* node, buf_t* codeBuf) {
 	assert(node != NULL);
-	assert(buf != NULL);
+	assert(codeBuf != NULL);
 
 	char* valueS = Value_tToStr(node->value);
 	
 	if (NodeChildsCount(node) > 0) {
-		Bufcat(buf, valueS);
-		Bufcat(buf, "{");
+		Bufcat(codeBuf, valueS);
+		Bufcat(codeBuf, "{");
 		if (node->left != NULL) {
-			CodeFromNode(node->left, buf);
+			NodesToCode(node->left, codeBuf);
 		}
 		else {
-			Bufcat(buf, "@");
+			Bufcat(codeBuf, "@");
 		}
-		Bufcat(buf, ",");
+		Bufcat(codeBuf, ",");
 		if (node->right != NULL) {
-			CodeFromNode(node->right, buf);
+			NodesToCode(node->right, codeBuf);
 		}
 		else {
-			Bufcat(buf, "@");
+			Bufcat(codeBuf, "@");
 		}
-		Bufcat(buf, "}");
+		Bufcat(codeBuf, "}");
 	}
 	else {
-		Bufcat(buf, "{");
-		Bufcat(buf, valueS);
-		Bufcat(buf, "}");
+		Bufcat(codeBuf, "{");
+		Bufcat(codeBuf, valueS);
+		Bufcat(codeBuf, "}");
 	}
 
 	return 0;
@@ -826,9 +961,9 @@ int CodeFromNode(node_t* node, buf_t* buf) {
  0 - все прошло нормально
 */
 
-int CodeFromTree(tree_t* tree, char* str) {
+int TreeToCode(tree_t* tree, char* code) {
 	assert(tree != NULL);
-	assert(str != NULL);
+	assert(code != NULL);
 
 #ifdef _DEBUG
 	if (!TreeOk(tree)) {
@@ -837,12 +972,155 @@ int CodeFromTree(tree_t* tree, char* str) {
 	}
 #endif
 
-	buf_t buf = {};
-	buf.str = str;
+	buf_t codeBuf = {};
+	codeBuf.str = code;
 	
-	Bufcat(&buf, "{");
-	CodeFromNode(tree->root, &buf);
-	Bufcat(&buf, "}");
+	Bufcat(&codeBuf, "{");
+	NodesToCode(tree->root, &codeBuf);
+	Bufcat(&codeBuf, "}");
 
 	return 0;
+}
+
+
+/*
+*	Рекурсивно создает узлы по коду
+*
+*	@param[in] buf Буфер с кодом
+*	@param[out] node Текущий узел. Внимание, при первичном вызове\
+ должен быть NULL, сюда запишется корневой узел!
+*	@param[out] size
+*
+*	@return 1 - ошибка в коде; 0 - все прошло нормально
+*/
+
+int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
+	assert(buf != NULL);
+	assert(size != NULL);
+
+	char curCh = buf->str[buf->cursor];
+	if (curCh == '{') {
+		buf->cursor++;
+		if (buf->str[buf->cursor] == '{') {
+			buf->cursor++;
+		}
+
+		if (buf->str[buf->cursor] == '@') {
+			node->left = NULL;
+		}
+		else {
+			char valueS[100] = "";
+			ReadToChar(valueS, buf, "{,}");
+
+			node_t* newNode = CreateNode();
+
+			value_t value = {};
+			StrToValue_t(valueS, &value);
+			ChangeNodeValue(newNode, value);
+			if (node != NULL) {
+				node->left = newNode;
+			}
+			newNode->parent = node;
+			if (node == NULL) {
+				node = newNode;
+			}
+			(*size)++;
+
+			int err = 0;
+			err = CodeToNodes(buf, newNode, size);
+			if (err != 0) {
+				return err;
+			}
+		}
+	}
+	else if (curCh == ',') {
+		buf->cursor++;
+		if (buf->str[buf->cursor] == '{') {
+			buf->cursor++;
+		}
+
+		if (buf->str[buf->cursor] == '@') {
+			node->right = NULL;
+		}
+		else {
+			char valueS[100] = "";
+			ReadToChar(valueS, buf, "{,}");
+
+			node_t* newNode = CreateNode();
+
+			value_t value = {};
+			StrToValue_t(valueS, &value);
+			ChangeNodeValue(newNode, value);
+			node->right = newNode;
+			newNode->parent = node;
+			(*size)++;
+
+			int err = 0;
+			err = CodeToNodes(buf, newNode, size);
+			if (err != 0) {
+				return err;
+			}
+		}
+	}
+	else if (curCh == '}') {
+		buf->cursor++;
+
+		if (node->parent != NULL) {
+			int err = 0;
+			err = CodeToNodes(buf, node->parent, size);
+			if (err != 0) {
+				return err;
+			}
+		}
+	}
+	else {
+		return 1;
+	}
+
+	return 0;
+}
+
+
+/**
+*	Создает дерево по коду
+*
+*	@param[in] code Код
+*	@param[in] treeName Имя дерева (по умолчанию "tree_from_code")
+*	@param[out] err Код ошибки (по желанию): 1 - ошибка в коде; 0 - все прошло нормально
+*
+*	@return Сгенерированное дерево
+*/
+
+tree_t CodeToTree(char* code, const char* treeName, int* err) {
+	assert(code != NULL);
+
+	tree_t tree = TreeConstructor(treeName);
+
+#ifdef _DEBUG
+	if (TreeOk(&tree)) {
+		PrintTree_OK(tree);
+	}
+	else {
+		PrintTree_NOK(tree);
+	}
+#endif
+
+	buf_t codeBuf = {};
+	codeBuf.str = code;
+	CalcBufSize(&codeBuf);
+
+	free(tree.root);
+	tree.root = NULL;
+	tree.size = 0;
+	int retErr = CodeToNodes(&codeBuf, tree.root, &tree.size);
+	
+	if (err != NULL) {
+		*err = retErr;
+	}
+
+#ifdef _DEBUG
+	assert(TreeOk(&tree));
+#endif
+
+	return tree;
 }

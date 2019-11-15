@@ -7,7 +7,7 @@ int main() {
 	tree_t tree1 = TreeConstructor("tree1");
 
 	node_t* nodes[10] = {};
-	AddChild(&tree1, tree1.root, 4, LEFT_CHILD, &nodes[0]);
+	AddChild(&tree1, tree1.root, 15, LEFT_CHILD, &nodes[0]);
 	ShowTree(&tree1);
 
 	AddChild(&tree1, nodes[0], 6, RIGHT_CHILD, &nodes[1]);
@@ -29,9 +29,12 @@ int main() {
 	ShowTree(&tree1);
 
 	char code[100] = "";
-	CodeFromTree(&tree1, code);
+	TreeToCode(&tree1, code);
 	printf("%s", code);
-	getchar();
+
+	int err = 0;
+	tree_t tree3 = CodeToTree(code, "tree3", &err);
+	ShowTree(&tree3);
 
 	DeleteChild(&tree1, nodes[0], RIGHT_CHILD);
 	ShowTree(&tree1);

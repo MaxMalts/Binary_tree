@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include "btree.h"
+#include "buffer.h"
 
 
 #ifdef _DEBUG
@@ -796,123 +797,6 @@ int TreeDestructor(tree_t* tree) {
 }
 
 
-/*   Не для пользователя
-*	Строка с курсором
-*/
-
-struct buf_t {
-	char* str = {};
-	int cursor = 0;
-	int size = 0;
-};
-
-
-/*  Не для пользователя
-*	Пишет строку в конец буфера
-*
-*	@param buf 
-*	@param[in] str 
-*
-*	@return 1 - проблема при дописывании; 0 - все прошло нормально
-*/
-
-int Bufcat(buf_t* buf, const char* str) {
-	assert(buf != NULL);
-	assert(str != NULL);
-
-	int ret = sprintf(&buf->str[buf->cursor], "%s", str);
-
-	int SLen = strlen(str);
-	buf->cursor += SLen;
-	buf->size += SLen;
-	buf->str[buf->cursor] = '\0';
-
-	if (ret == 0) {
-		return 1;
-	}
-	return 0;
-}
-
-
-/**
-*	Прверяет, является ли символ одним из данных
-*
-*	@param[in] ch Проверяемый символ
-*	@param[in] chars Массив символов
-*
-*	@return 0 (false) - не является; 1 (true) - является
-*/
-
-int IsOneOfChars(const char ch, const char* chars) {
-	assert(chars != NULL);
-
-	for (int i = 0; i < strlen(chars); i++) {
-		if (ch == chars[i]) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/*
-*	Считает размер буфера и записывает его
-*
-*	@param buf Буфер
-*
-*	@return Размер
-*/
-
-int CalcBufSize(buf_t* buf) {
-	assert(buf != NULL);
-
-	int res = strlen(buf->str);
-	buf->size = res;
-
-	return res;
-}
-
-
-/*
-*	Читает из буфера до одного из заданного символов
-*
-*	@param[out] str Строка, в которую прочитается
-*	@param[in] buf Буфер
-*	@param[in] chars Массив конечных символов
-*
-*	@return 1 - символ не найден, курсор остается на том же месте;\
- 0 - все прошло нормально
-*/
-
-int ReadToChar(char* str, buf_t* buf, const char* chars) {
-	assert(str != NULL);
-	assert(buf != NULL);
-	assert(chars != NULL);
-
-	int NChars = strlen(chars);
-
-	int cursorRecover = buf->cursor;
-	
-	int strCursor = 0;
-
-	char curCh = buf->str[buf->cursor];
-
-	while (!IsOneOfChars(curCh, chars)) {
-
-		if (buf->cursor > buf->size) {
-			buf->cursor = cursorRecover;
-			return 1;
-		}
-
-		str[strCursor] = curCh;
-		buf->cursor++;
-		strCursor++;
-
-		curCh = buf->str[buf->cursor];
-	}
-
-	return 0;
-}
-
 /*  Не для пользователя
 *	Создает код по узлу
 *
@@ -1003,16 +887,14 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 	assert(buf != NULL);
 	assert(size != NULL);
 
-	char curCh = buf->str[buf->cursor];
+	char curCh = Bgetc(buf);
 	if (curCh == '{') {
-		buf->cursor++;
-		if (buf->str[buf->cursor] == '{') {
-			buf->cursor++;
+		if (Bgetc(buf) != '{') {
+			Bseek(buf, -1, BSEEK_CUR);
 		}
 
-		if (buf->str[buf->cursor] == '@') {
+		if (Bgetc(buf) == '@') {
 			node->left = NULL;
-			buf->cursor++;
 
 			int err = 0;
 			err = CodeToNodes(buf, node, size);
@@ -1021,6 +903,8 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 			}
 		}
 		else {
+			Bseek(buf, -1, BSEEK_CUR);
+
 			char valueS[100] = "";
 			ReadToChar(valueS, buf, "{,}");
 
@@ -1046,14 +930,12 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 		}
 	}
 	else if (curCh == ',') {
-		buf->cursor++;
-		if (buf->str[buf->cursor] == '{') {
-			buf->cursor++;
+		if (Bgetc(buf) != '{') {
+			Bseek(buf, -1, BSEEK_CUR);
 		}
 
-		if (buf->str[buf->cursor] == '@') {
+		if (Bgetc(buf) == '@') {
 			node->right = NULL;
-			buf->cursor++;
 
 			int err = 0;
 			err = CodeToNodes(buf, node, size);
@@ -1062,6 +944,8 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 			}
 		}
 		else {
+			Bseek(buf, -1, BSEEK_CUR);
+
 			char valueS[100] = "";
 			ReadToChar(valueS, buf, "{,}");
 
@@ -1082,7 +966,6 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 		}
 	}
 	else if (curCh == '}') {
-		buf->cursor++;
 
 		if (node->parent != NULL) {
 			int err = 0;
@@ -1105,7 +988,8 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 *
 *	@param[in] code Код
 *	@param[in] treeName Имя дерева (по умолчанию "tree_from_code")
-*	@param[out] err Код ошибки (по желанию): 1 - ошибка в коде; 0 - все прошло нормально
+*	@param[out] err Код ошибки (по желанию): 1 - произвольная ошибка;\
+ 2 - ошибка в коде; 0 - все прошло нормально
 *
 *	@return Сгенерированное дерево
 */
@@ -1124,9 +1008,12 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 	}
 #endif
 
-	buf_t codeBuf = {};
-	codeBuf.str = code;
-	CalcBufSize(&codeBuf);
+	int constructErr = 0;
+	buf_t codeBuf = BufConstructor('r', code, strlen(code), &constructErr);
+	if (constructErr != 0) {
+		*err = 1;
+		return tree;
+	}
 
 	free(tree.root);
 	tree.root = NULL;
@@ -1134,12 +1021,12 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 	int retErr = CodeToNodes(&codeBuf, tree.root, &tree.size);
 	
 	if (err != NULL) {
-		*err = retErr;
+		*err = 2;
 	}
 
 #ifdef _DEBUG
 	if (!TreeOk(&tree)) {
-		*err = 1;
+		*err = 2;
 	}
 #endif
 

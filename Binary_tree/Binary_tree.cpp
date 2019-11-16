@@ -472,7 +472,9 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t**
 
 	tree->size++;
 
-	*createdNode = newNode;
+	if (createdNode != NULL) {
+		*createdNode = newNode;
+	}
 
 #ifdef _DEBUG
 	if (TreeOk(tree)) {
@@ -908,7 +910,11 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 
 	char curCh = Bgetc(buf);
 	if (curCh == '{') {
-		if (Bgetc(buf) != '{') {
+		char nextCh = Bgetc(buf);
+		if (nextCh == EOB) {
+			return 1;
+		}
+		if (nextCh != '{') {
 			Bseek(buf, -1, BSEEK_CUR);
 		}
 
@@ -949,7 +955,11 @@ int CodeToNodes(buf_t* buf, node_t*& node, int* size) {
 		}
 	}
 	else if (curCh == ',') {
-		if (Bgetc(buf) != '{') {
+		char nextCh = Bgetc(buf);
+		if (nextCh == EOB) {
+			return 1;
+		}
+		if (nextCh != '{') {
 			Bseek(buf, -1, BSEEK_CUR);
 		}
 

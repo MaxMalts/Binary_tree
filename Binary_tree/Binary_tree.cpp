@@ -248,7 +248,7 @@ int NodesOutput(FILE* gvFile, node_t* node) {
 #ifdef _DEBUG
 	fprintf(gvFile, "\t%d [label=\"{%p|%p|%s|{%p|%p}}\"]\n", (int)node, node, node->parent, valueS, node->left, node->right);
 #else
-	fprintf(gvFile, "\t%d [label=\"%s\"]", (int)node, sValue);
+	fprintf(gvFile, "\t%d [label=\"%s\"]", (int)node, valueS);
 #endif
 	free(valueS);
 
@@ -297,7 +297,7 @@ int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]
 	fprintf(gvFile, "\tnode [shape=record]\n\n");
 	fprintf(gvFile, "\tformat_node [label=\"{adress|parent|value|{left|right}}\"]\n\n");
 #else
-	fprintf(ftemp, "digraph {\n", tree->name);
+	fprintf(gvFile, "digraph {\n");
 #endif
 
 	NodesOutput(gvFile, tree->root);
@@ -844,31 +844,50 @@ int NodesToCode(node_t* node, buf_t* codeBuf) {
 *	Создает код по дереву
 *
 *	@param[in] tree Дерево
-*	@param[out] str Буфер
+*	@param[out] size Длина полученного кода (без учета '\0').\
+ Если значение отрицательное, то возникла следующая ошибка:\
+ -1 - на вход подалось дерево с ошибкой (только в режиме отладки);\
+ -2 -проблема при создании буфера; 0 - все прошло нормально
 *
-*	@return 1 - на вход подалось дерево с ошибкой (только в режиме отладки);\
- 0 - все прошло нормально
+*	@return Указатель на буфер с кодом. В случае ошибки равен NULL.\
+ Не забудьте освободить память по этому указателю!
 */
 
-int TreeToCode(tree_t* tree, char* code) {
+char* TreeToCode(tree_t* tree, int* size) {
 	assert(tree != NULL);
-	assert(code != NULL);
 
 #ifdef _DEBUG
 	if (!TreeOk(tree)) {
 		PrintTree_NOK(*tree);
-		return 1;
+		if (size != NULL) {
+			*size = -1;
+		}
+		return NULL;
 	}
 #endif
 
-	buf_t codeBuf = {};
-	codeBuf.str = code;
-	
+	int bufConstrErr = 0;
+	buf_t codeBuf = BufConstructor('w', &bufConstrErr);
+	if (bufConstrErr != 0) {
+		if (size != NULL) {
+			*size = -2;
+		}
+		return NULL;
+	}
+
 	Bufcat(&codeBuf, "{");
 	NodesToCode(tree->root, &codeBuf);
 	Bufcat(&codeBuf, "}");
 
-	return 0;
+	char* res = (char*)calloc(codeBuf.lastChar + 2, sizeof(char));
+	strncpy(res, codeBuf.str, codeBuf.lastChar + 1);
+	if (size != NULL) {
+		*size = codeBuf.lastChar + 1;
+	}
+
+	BufDestructor(&codeBuf);
+
+	return res;
 }
 
 
@@ -1020,13 +1039,19 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 	tree.size = 0;
 	int retErr = CodeToNodes(&codeBuf, tree.root, &tree.size);
 	
-	if (err != NULL) {
-		*err = 2;
+	if (retErr != 0) {
+		if (err != NULL) {
+			*err = 2;
+		}
+		return tree;
 	}
 
 #ifdef _DEBUG
 	if (!TreeOk(&tree)) {
-		*err = 2;
+		if (err != NULL) {
+			*err = 2;
+		}
+		return tree;
 	}
 #endif
 

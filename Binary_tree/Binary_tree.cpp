@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+#include <windows.h>
 #include "btree.h"
 #include "buffer.h"
 
@@ -332,15 +333,7 @@ int ShowTree(tree_t* tree) {
 	}
 #endif
 
-	//Чтобы не использовать Sleep() из windows.h.
-	//Если этого не сделать, то предыдущее изображение открывается как новое.
-	int a = 0;
-	for (int i = 0; i < 1000000; i++) {
-		a++;
-		if (a % 100 == 0) {
-			i -= 99;
-		}
-	}
+	Sleep(700);   //Если этого не сделать, то предыдущее изображение открывается как новое.
 
 	if (CreateTreeImage(tree) == 1) {
 		return 1;

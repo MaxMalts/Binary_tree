@@ -306,7 +306,7 @@ int CreateTreeImage(tree_t* tree, const char foutName[], const char gvFileName[]
 	fclose(gvFile);
 
 	char sysCommand[1000] = "";
-	sprintf(sysCommand, "dot -Tpng %s -o %s", gvFileName, foutName);
+	sprintf(sysCommand, "start /wait dot -Tpng %s -o %s", gvFileName, foutName);
 	system(sysCommand);
 
 	return 0;

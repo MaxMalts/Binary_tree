@@ -39,7 +39,7 @@ int CopyValue_t(value_t* dest, value_t* source);
 char* Value_tToStr(const value_t value);
 
 
-tree_t TreeConstructor(const char* name);
+tree_t TreeConstructor(const char* name = "tree");
 
 int ChangeNodeValue(node_t* node, value_t value);
 
@@ -50,6 +50,8 @@ int DeleteChild(tree_t* tree, node_t* node, const int side);
 int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side);
 
 int DeleteSubtree(tree_t* tree, node_t* node, const int side);
+
+tree_t SplitTree(tree_t* tree, node_t* node, const int side, const char* name = "subtree", int* err = NULL);
 
 int DeleteTree(tree_t* tree);
 

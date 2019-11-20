@@ -380,6 +380,88 @@ tree_t TreeConstructor(const char* name) {
 }
 
 
+/*  Не для пользователя
+*	Считает количество узлов-потомков с учетом входного узла (рекурсивно)
+*
+*	@param[in] node Узел
+*	@param[out] size Количество
+*
+*	@return 0 - все прошло нормально
+*/
+
+int CalcNodesCount(node_t* node, int* size) {
+	assert(node != NULL);
+	assert(size != NULL);
+
+	if (node->left != NULL) {
+		int err = CalcNodesCount(node->left, size);
+		if (err != 0) {
+			return err;
+		}
+	}
+	if (node->right != NULL) {
+		int err = CalcNodesCount(node->right, size);
+		if (err != 0) {
+			return err;
+		}
+	}
+	(*size)++;
+	return 0;
+}
+
+
+/*  Не для пользователя
+*	Пересчитывает размер дерева
+*
+*	@param tree Дерево
+*
+*	@return См. возвращаемое значение CalcNodesCount
+*/
+
+int RecalcTreeSize(tree_t* tree) {
+	assert(tree != NULL);
+	assert(tree->root != NULL);
+
+	return CalcNodesCount(tree->root, &tree->size);
+}
+
+/*  Не для пользователя
+*	Создает новое дерево. После вызова, измените значение корня\
+ на нужное с помощью функции ChangeNodeValue()!
+ *
+ *	@param[in] name Имя дерева
+ *
+ *	@return Указатель на созданное дерево
+*/
+
+tree_t TreeRootConstructor(node_t* root, const char* name) {
+	assert(root != NULL);
+	assert(root->parent == NULL);
+	assert(name != NULL);
+
+	tree_t tree = {};
+
+#ifdef _DEBUG
+	strcpy(tree.name, name);
+	tree.err = 0;
+#endif
+
+	tree.root = root;
+	RecalcTreeSize(&tree);
+
+#ifdef _DEBUG
+	if (TreeOk(&tree)) {
+		PrintTree_OK(tree);
+	}
+	else {
+		PrintTree_NOK(tree);
+	}
+#endif
+
+	return tree;
+}
+
+
 /**
 *	Перезаписывает значение узла
 *
@@ -746,6 +828,82 @@ int DeleteSubtree(tree_t* tree, node_t* node, const int side) {
 	return 0;
 }
 
+
+/**
+*	Разделяет дерево путем создания нового дерева - поддерева исходного
+*
+*	@param tree Исходное дерево
+*	@param[in] node Узел, дочерний узел которого будет корнем нового дерева
+*	@param[in] side Сторона узла
+*	@param[in] name Имя нового дерева
+*	@param[out] err Ошибка: 1 - на вход подалось некорректное дерево;\
+ 2 - некорректная сторона; 0 - все прошло нормально
+*
+*	@return Полученное поддерево
+*/
+
+tree_t SplitTree(tree_t* tree, node_t* node, const int side, const char* name, int* err) {
+	assert(tree != NULL);
+	assert(node != NULL);
+	assert(name != NULL);
+
+	tree_t err_tree = {};
+
+#ifdef _DEBUG
+	if (!TreeOk(tree)) {
+		PrintTree_NOK(*tree);
+		if (err != NULL) {
+			*err = 1;
+		}
+		return err_tree;
+	}
+#endif
+
+	if (!SideIsCorrect(side)) {
+		if (err != NULL) {
+			*err = 2;
+		}
+		return err_tree;
+	}
+
+	tree_t newTree = {}; 
+
+	switch (side) {
+	case LEFT_CHILD:
+		node->left->parent = NULL;
+		newTree = TreeRootConstructor(node->left, name);
+		node->left = NULL;
+		break;
+	case RIGHT_CHILD:
+		node->right->parent = NULL;
+		newTree = TreeRootConstructor(node->right, name);
+		node->right = NULL;
+		break;
+	default:
+		assert(0);
+	}
+	tree->size -= newTree.size;
+
+#ifdef _DEBUG
+	if (TreeOk(&newTree)) {
+		PrintTree_OK(newTree);
+	}
+	else {
+		PrintTree_NOK(newTree);
+	}
+	if (TreeOk(tree)) {
+		PrintTree_OK(*tree);
+	}
+	else {
+		PrintTree_NOK(*tree);
+	}
+#endif
+
+	if (err != NULL) {
+		*err = 0;
+	}
+	return newTree;
+}
 
 /**
 *	Пролностью удаляет дерево, включая все его узлы.\

@@ -501,7 +501,7 @@ node_t* CreateNode() {
 *	Добавляет узел с указанной стороны по значению
 *
 *	@param tree Дерево, в котором находится узел
-*	@param node Узел, к которому добавляем
+*	@param node Узел, к которому добавляем. Должен быть частью дерева, иначе в дереве возникнет ошибка.
 *	@param[in] value Значение нового узла
 *	@param[in] side Сторона, с которой добавляем (LEFT_CHILD, RIGHT_CHILD)
 *	@param[out] newNode Адрес нового узла
@@ -607,7 +607,8 @@ int AddChild(tree_t* tree, node_t* node, value_t value, const int side, node_t**
 *	Удаляет дочерний узел
 *
 *	@param tree Дерево, в котором находится узел
-*	@param node Узел, в котором освобождаем удаляем узел
+*	@param node Узел, в котором освобождаем удаляем узел.\
+ Должен быть частью дерева, иначе в дереве возникнет ошибка.
 *	@param[in] side Сторона, с которой удаляем (LEFT_CHILD, RIGHT_CHILD)
 *
 *	@return 1 - не было дочернего узла; 2 - дочерний узел оказался поддеревом;\
@@ -675,8 +676,8 @@ int DeleteChild(tree_t* tree, node_t* node, const int side) {
 *	Добавляет поддерево в дерево по указанному узлу.
 *
 *	@param tree Дерево, в которое добавляем
+*	@param node Узел, к которому добавляем. Должен быть частью дерева, иначе в дереве возникнет ошибка.
 *	@param subtree Поддерево, которое добавляем. После присоединения деконструируется!
-*	@param node Узел, к которому добавляем
 *	@param[in] side Сторона узла, с которой добавляем
 *
 *	@return 1 - у узла уже был дочерний узел с соответствующей стороны;\
@@ -685,7 +686,7 @@ int DeleteChild(tree_t* tree, node_t* node, const int side) {
  0 - все прошло нормально
 */	
 
-int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side) {
+int AddSubtree(tree_t* tree, node_t* node, tree_t* subtree, const int side) {
 	assert(tree != NULL);
 	assert(subtree != NULL);
 	assert(node != NULL);
@@ -770,7 +771,8 @@ int DeleteNodes(node_t* node, int count = 0) {
 *	Удаляет поддерево
 *
 *	@param tree Дерево
-*	@param node Узел, поддерево удаляется начиная с дочернего узла
+*	@param node Узел, поддерево удаляется начиная с дочернего узла.\
+ Должен быть частью дерева, иначе в дереве возникнет ошибка.
 *	@param side Сторона дочернего узла
 *
 *	@return 1 - не было дочернего узла; 2 - параметр side имел некорректное значние;\
@@ -833,7 +835,8 @@ int DeleteSubtree(tree_t* tree, node_t* node, const int side) {
 *	Разделяет дерево путем создания нового дерева - поддерева исходного
 *
 *	@param tree Исходное дерево
-*	@param[in] node Узел, дочерний узел которого будет корнем нового дерева
+*	@param[in] node Узел, дочерний узел которого будет корнем нового дерева.\
+ Должен быть частью дерева, иначе в дереве возникнет ошибка.
 *	@param[in] side Сторона узла
 *	@param[in] name Имя нового дерева
 *	@param[out] err Ошибка: 1 - на вход подалось некорректное дерево;\

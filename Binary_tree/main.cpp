@@ -37,10 +37,11 @@ int main() {
 	
 
 	tree_t tree4 = SplitTree(&tree1, tree1.root, LEFT_CHILD);
+	ShowTree(&tree1);
 	ShowTree(&tree4);
 
-	DeleteChild(&tree1, nodes[0], RIGHT_CHILD);
-	ShowTree(&tree1);
+	DeleteChild(&tree4, nodes[0], RIGHT_CHILD);
+	ShowTree(&tree4);
 
 
 	DeleteSubtree(&tree1, tree1.root, LEFT_CHILD);

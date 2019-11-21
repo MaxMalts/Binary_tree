@@ -189,21 +189,6 @@ int TreeOk(tree_t* tree) {
 #endif
 
 
-/**
-*	Возвращает ошибку в дереве
-*
-*	@param[in] tree Дерево
-*
-*	@retrurn Код ошибки. Соответствие см. в определении дерева
-*/
-
-int TreeErr(tree_t* tree) {
-	assert(tree != NULL);
-
-	return tree->err;
-}
-
-
 /*  Не для пользователя
 *	Выводит информацию о дереве. Для визуализации дерева, используйте ShowTree().
 *

@@ -31,8 +31,6 @@ struct tree_t {
 
 int TreeOk(tree_t* tree);
 
-int TreeErr(tree_t* tree);
-
 
 int NodeChildsCount(node_t* node);
 

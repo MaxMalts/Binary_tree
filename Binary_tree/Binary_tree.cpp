@@ -114,6 +114,23 @@ int StrToValue_t(const char* valueS, value_t* value) {
 }
 
 
+/**
+*	Сравнивает значения value_t
+*
+*	@param[in] value1 Первое значение
+*	@param[in] value2 Второе значение
+*
+*	@return < 0 - первое значение меньше второго; 0 - значения равны; > 0 - первое значение больше второго
+*/
+
+int ValueCmp(value_t* value1, value_t* value2) {
+	assert(value1 != NULL);
+	assert(value2 != NULL);
+
+	return *value1 - *value2;
+}
+
+
 /*  Не для пользователя
 *	Проверяет узлы ниже заданного и считает их количество
 *
@@ -686,7 +703,7 @@ int DeleteChild(tree_t* tree, node_t* node, const int side) {
  0 - все прошло нормально
 */	
 
-int AddSubtree(tree_t* tree, node_t* node, tree_t* subtree, const int side) {
+int AddSubtree(tree_t* tree, tree_t* subtree, node_t* node, const int side) {
 	assert(tree != NULL);
 	assert(subtree != NULL);
 	assert(node != NULL);
@@ -1220,4 +1237,90 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 #endif
 
 	return tree;
+}
+
+
+/*  Не для пользователя
+*	Ищет узел с указанным значением (рекурсивно)
+*
+*	@param[in] curNode Текущий узел (при первичном вызове должен быть корнем дерева!)
+*	@param[in] value Значение
+*	@param[out] way Путь до найденного узла (если нашелся) в формате строки из '0' и '1',\
+ где '0' означает левого сына, '1' - правого. В конце строки ставится '\0'
+*
+*	@return 1 (true) - узел найдет; 0 (false) - узел не найден
+*/
+
+int NodeByValue(node_t* curNode, value_t* value, buf_t* way) {
+	assert(curNode != NULL);
+	assert(value != NULL);
+	assert(way != NULL);
+
+	if (ValueCmp(&curNode->value, value) == 0) {
+		Bputc(way, '\0');
+		return 1;
+	}
+	if (NodeChildsCount(curNode) == 0) {
+		Bseek(way, -1, SEEK_CUR);
+		Bputc(way, '\0');
+		Bseek(way, -1, SEEK_CUR);
+		return 0;
+	}
+
+	if (curNode->left != NULL) {
+		Bputc(way, '0');
+		if (NodeByValue(curNode->left, value, way) == 1) {
+			return 1;
+		}
+	}
+	if (curNode->right != NULL) {
+		Bputc(way, '1');
+		if (NodeByValue(curNode->right, value, way) == 1) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+/**
+*	Ищет узел с указанным значением
+*
+*	@param[in] tree Дерево
+*	@param[in] value Значение
+*	@param[out] err Ошибка: 1 - произвольная ошибка; 2 - узел с таким значением не найден
+*
+*	@return Указатель на строку с путем до найденного узла (если нашелся) в виде '0' и '1',\
+ где '0' означает левого сына, '1' - правого. В конце строки ставится '\0'.\
+ Не забудьте освободить память по этому указателю! Если возникла ошибка, возвращает NULL.
+*/
+
+char* FindNodeByValue(tree_t* tree, value_t* value, int* err) {
+	assert(tree != NULL);
+	assert(value != NULL);
+
+	int constrErr = 0;
+	buf_t way = BufConstructor('w', &constrErr);
+	if (constrErr != 0) {
+		if (err != NULL) {
+			*err = 1;
+		}
+		return NULL;
+	}
+
+	if (!NodeByValue(tree->root, value, &way)) {
+		if (err != NULL) {
+			*err = 2;
+		}
+		free(way.str);
+		BufDestructor(&way);
+		return NULL;
+	}
+
+	char* resWay = way.str;
+	BufDestructor(&way);
+	if (err != NULL) {
+		*err = 0;
+	}
+	return resWay;
 }

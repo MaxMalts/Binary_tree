@@ -14,8 +14,10 @@ int main() {
 	//ShowTree(&tree1);
 
 	AddChild(&tree1, nodes[0], 7, LEFT_CHILD, &nodes[2]);
-	//ShowTree(&tree1);
+	ShowTree(&tree1);
 
+	int a = 6;
+	char* way = FindNodeByValue(&tree1, &a);
 
 	tree_t tree2 = TreeConstructor("tree2");
 	AddChild(&tree2, tree2.root, 2, LEFT_CHILD, &nodes[3]);

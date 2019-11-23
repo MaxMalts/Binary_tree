@@ -38,6 +38,10 @@ int CopyValue_t(value_t* dest, value_t* source);
 
 char* Value_tToStr(const value_t value);
 
+int StrToValue_t(const char* valueS, value_t* value);
+
+int ValueCmp(value_t* value1, value_t* value2);
+
 
 tree_t TreeConstructor(const char* name = "tree");
 
@@ -66,3 +70,5 @@ int ShowTree(tree_t* tree);
 char* TreeToCode(tree_t* tree, int* size);
 
 tree_t CodeToTree(char* code, const char* treeName="tree_from_code", int* err = NULL);
+
+char* FindNodeByValue(tree_t* tree, value_t* value, int* err = NULL);

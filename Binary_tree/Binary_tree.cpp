@@ -1254,7 +1254,7 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 *	@param[out] way Путь до найденного узла (если нашелся) в формате строки из '0' и '1',\
  где '0' означает левого сына, '1' - правого. В конце строки ставится '\0'
 *
-*	@return 1 (true) - узел найдет; 0 (false) - узел не найден
+*	@return 1 (true) - узел найден; 0 (false) - узел не найден
 */
 
 int NodeByValue(node_t* curNode, const value_t* value, buf_t* way, node_t*& foundNode) {
@@ -1286,6 +1286,10 @@ int NodeByValue(node_t* curNode, const value_t* value, buf_t* way, node_t*& foun
 			return 1;
 		}
 	}
+	Bseek(way, -1, SEEK_CUR);
+	Bputc(way, '\0');
+	Bseek(way, -1, SEEK_CUR);
+
 	return 0;
 }
 

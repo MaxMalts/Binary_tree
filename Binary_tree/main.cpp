@@ -6,6 +6,10 @@
 int main() {
 	tree_t tree1 = TreeConstructor("tree1");
 
+	int a = 0;
+	node_t* foundNode = NULL;
+	char* way = FindNodeByValue(&tree1, 0, foundNode, &a);
+
 	node_t* nodes[10] = {};
 	AddChild(&tree1, tree1.root, 15, LEFT_CHILD, &nodes[0]);
 	//ShowTree(&tree1);
@@ -16,8 +20,7 @@ int main() {
 	AddChild(&tree1, nodes[0], 7, LEFT_CHILD, &nodes[2]);
 	ShowTree(&tree1);
 
-	int a = 6;
-	char* way = FindNodeByValue(&tree1, &a);
+	
 
 	tree_t tree2 = TreeConstructor("tree2");
 	AddChild(&tree2, tree2.root, 2, LEFT_CHILD, &nodes[3]);

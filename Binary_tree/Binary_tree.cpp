@@ -62,11 +62,10 @@ int NodeChildsCount(node_t* node) {
 *	@return 0 - все прошло нормально
 */
 
-int CopyValue_t(value_t* dest, value_t* source) {
+int CopyValue_t(value_t* dest, value_t source) {
 	assert(dest != NULL);
-	assert(source != NULL);
 
-	*dest = *source;
+	*dest = source;
 
 	return 0;
 }
@@ -123,11 +122,18 @@ int StrToValue_t(const char* valueS, value_t* value) {
 *	@return < 0 - первое значение меньше второго; 0 - значения равны; > 0 - первое значение больше второго
 */
 
-int ValueCmp(value_t* value1, value_t* value2) {
-	assert(value1 != NULL);
-	assert(value2 != NULL);
+int ValueCmp(const value_t value1, const value_t value2) {
 
-	return *value1 - *value2;
+	int sub = value1 - value2;
+	if (sub < 0) {
+		return -1;
+	}
+	if (sub == 0) {
+		return 0;
+	}
+	if (sub > 0) {
+		return 1;
+	}
 }
 
 
@@ -491,7 +497,7 @@ tree_t TreeRootConstructor(node_t* root, const char* name) {
 int ChangeNodeValue(node_t* node, value_t value) {
 	assert(node != NULL);
 
-	CopyValue_t(&node->value, &value);
+	CopyValue_t(&node->value, value);
 
 	return 0;
 }
@@ -1251,13 +1257,14 @@ tree_t CodeToTree(char* code, const char* treeName, int* err) {
 *	@return 1 (true) - узел найдет; 0 (false) - узел не найден
 */
 
-int NodeByValue(node_t* curNode, value_t* value, buf_t* way) {
+int NodeByValue(node_t* curNode, const value_t* value, buf_t* way, node_t*& foundNode) {
 	assert(curNode != NULL);
 	assert(value != NULL);
 	assert(way != NULL);
 
-	if (ValueCmp(&curNode->value, value) == 0) {
+	if (ValueCmp(curNode->value, *value) == 0) {
 		Bputc(way, '\0');
+		foundNode = curNode;
 		return 1;
 	}
 	if (NodeChildsCount(curNode) == 0) {
@@ -1269,13 +1276,13 @@ int NodeByValue(node_t* curNode, value_t* value, buf_t* way) {
 
 	if (curNode->left != NULL) {
 		Bputc(way, '0');
-		if (NodeByValue(curNode->left, value, way) == 1) {
+		if (NodeByValue(curNode->left, value, way, foundNode) == 1) {
 			return 1;
 		}
 	}
 	if (curNode->right != NULL) {
 		Bputc(way, '1');
-		if (NodeByValue(curNode->right, value, way) == 1) {
+		if (NodeByValue(curNode->right, value, way, foundNode) == 1) {
 			return 1;
 		}
 	}
@@ -1288,6 +1295,7 @@ int NodeByValue(node_t* curNode, value_t* value, buf_t* way) {
 *
 *	@param[in] tree Дерево
 *	@param[in] value Значение
+*	@param[out] foundNode Найденный узел. Должен быть NULL при вызове.
 *	@param[out] err Ошибка: 1 - произвольная ошибка; 2 - узел с таким значением не найден
 *
 *	@return Указатель на строку с путем до найденного узла (если нашелся) в виде '0' и '1',\
@@ -1295,9 +1303,9 @@ int NodeByValue(node_t* curNode, value_t* value, buf_t* way) {
  Не забудьте освободить память по этому указателю! Если возникла ошибка, возвращает NULL.
 */
 
-char* FindNodeByValue(tree_t* tree, value_t* value, int* err) {
+char* FindNodeByValue(tree_t* tree, const value_t value, node_t*& foundNode, int* err) {
 	assert(tree != NULL);
-	assert(value != NULL);
+	assert(foundNode == NULL);
 
 	int constrErr = 0;
 	buf_t way = BufConstructor('w', &constrErr);
@@ -1308,7 +1316,7 @@ char* FindNodeByValue(tree_t* tree, value_t* value, int* err) {
 		return NULL;
 	}
 
-	if (!NodeByValue(tree->root, value, &way)) {
+	if (!NodeByValue(tree->root, &value, &way, foundNode)) {
 		if (err != NULL) {
 			*err = 2;
 		}

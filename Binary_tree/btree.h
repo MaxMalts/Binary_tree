@@ -34,13 +34,13 @@ int TreeOk(tree_t* tree);
 
 int NodeChildsCount(node_t* node);
 
-int CopyValue_t(value_t* dest, value_t* source);
+int CopyValue_t(value_t* dest, const value_t source);
 
 char* Value_tToStr(const value_t value);
 
 int StrToValue_t(const char* valueS, value_t* value);
 
-int ValueCmp(value_t* value1, value_t* value2);
+int ValueCmp(const value_t value1, const value_t value2);
 
 
 tree_t TreeConstructor(const char* name = "tree");
@@ -71,4 +71,4 @@ char* TreeToCode(tree_t* tree, int* size);
 
 tree_t CodeToTree(char* code, const char* treeName="tree_from_code", int* err = NULL);
 
-char* FindNodeByValue(tree_t* tree, value_t* value, int* err = NULL);
+char* FindNodeByValue(tree_t* tree, const value_t value, node_t*& foundNode, int* err = NULL);

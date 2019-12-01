@@ -201,6 +201,7 @@ int TreeOk(tree_t* tree) {
 	int actSize = 0;
 	if (NodesOk(tree->root, &actSize) != 0) {
 		tree->err = 3;
+		return 0;
 	}
 	if (actSize != tree->size) {
 		tree->err = 4;
@@ -374,7 +375,7 @@ int ShowTree(tree_t* tree) {
  *
  *	@param[in] name Имя дерева
  *
- *	@return Указатель на созданное дерево
+ *	@return Созданное дерево
 */
 
 tree_t TreeConstructor(const char* name) {
@@ -445,16 +446,21 @@ int RecalcTreeSize(tree_t* tree) {
 	assert(tree != NULL);
 	assert(tree->root != NULL);
 
-	return CalcNodesCount(tree->root, &tree->size);
+	int newSize = 0;
+	CalcNodesCount(tree->root, &newSize);
+	tree->size = newSize;
+
+	return newSize;
 }
 
+
 /*  Не для пользователя
-*	Создает новое дерево. После вызова, измените значение корня\
- на нужное с помощью функции ChangeNodeValue()!
- *
- *	@param[in] name Имя дерева
- *
- *	@return Указатель на созданное дерево
+*	Создает новое дерево с заданным корнем
+*
+*	@param[in] root Корень
+*	@param[in] name Имя дерева
+*
+*	@return Созданное дерево
 */
 
 tree_t TreeRootConstructor(node_t* root, const char* name) {
